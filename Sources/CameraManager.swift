@@ -21,7 +21,7 @@ public enum CameraState {
 }
 
 public enum CameraDevice {
-    case front, back, uWide
+    case front, telephoto, wideAngle, ultraWideAngle, dual, dualWideAngle, triple
 }
 
 public enum CameraFlashMode: Int {
@@ -217,14 +217,44 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
     
     /// Property to determine if current device has front camera.
     open var hasFrontCamera: Bool = {
-        let frontDevices = AVCaptureDevice.videoDevices.filter { $0.position == .front }
-        return !frontDevices.isEmpty
+        let frontCamera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front)
+        return (frontCamera != nil)
+    }()
+
+    /// Property to determine if current device has Telephoto camera.
+    open var hasTelephotoCamera: Bool = {
+        let telephotoCamera = AVCaptureDevice.default(.builtInTelephotoCamera, for: .video, position: .back)
+        return (telephotoCamera != nil)
+    }()
+
+    /// Property to determine if current device has Wide Angle camera.
+    open var hasWideAngleCamera: Bool = {
+        let wideAngleCamera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
+        return (wideAngleCamera != nil)
     }()
     
     /// Property to determine if current device has Ultra Wide camera.
-    open var hasuWideCamera: Bool = {
-        let frontDevices = AVCaptureDevice.default(.builtInUltraWideCamera, for: .video, position: .back)
-        return (frontDevices != nil)
+    open var hasUltraWideAngleCamera: Bool = {
+        let ultraWideAngleCamera = AVCaptureDevice.default(.builtInUltraWideCamera, for: .video, position: .back)
+        return (ultraWideAngleCamera != nil)
+    }()
+
+    /// Property to determine if current device has Dual camera.
+    open var hasDualCamera: Bool = {
+        let dualCamera = AVCaptureDevice.default(.builtInDualCamera, for: .video, position: .back)
+        return (dualCamera != nil)
+    }()
+
+    /// Property to determine if current device has Dual Wide Angle camera.
+    open var hasDualWideAngleCamera: Bool = {
+        let dualWideAngleCamera = AVCaptureDevice.default(.builtInDualWideCamera, for: .video, position: .back)
+        return (dualWideAngleCamera != nil)
+    }()
+
+    /// Property to determine if current device has Triple camera.
+    open var hasTripleCamera: Bool = {
+        let tripleCamera = AVCaptureDevice.default(.builtInTripleCamera, for: .video, position: .back)
+        return (tripleCamera != nil)
     }()
     
     /// Property to determine if current device has flash.
@@ -258,7 +288,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
     }
     
     /// Property to change camera device between front and back.
-    open var cameraDevice: CameraDevice = .back {
+    open var cameraDevice: CameraDevice = .wideAngle {
         didSet {
             if cameraIsSetup, cameraDevice != oldValue {
                 if animateCameraDeviceChange {
@@ -351,15 +381,31 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
     fileprivate var sessionQueue: DispatchQueue = DispatchQueue(label: "CameraSessionQueue", attributes: [])
     
     fileprivate lazy var frontCameraDevice: AVCaptureDevice? = {
-        AVCaptureDevice.videoDevices.filter { $0.position == .front }.first
+        AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front)
+    }()
+
+    fileprivate lazy var telephotoCameraDevice: AVCaptureDevice? = {
+        AVCaptureDevice.default(.builtInTelephotoCamera, for: .video, position: .back)
     }()
     
-    fileprivate lazy var backCameraDevice: AVCaptureDevice? = {
-        AVCaptureDevice.videoDevices.filter { $0.position == .back }.first
+    fileprivate lazy var wideAngleCameraDevice: AVCaptureDevice? = {
+        AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
     }()
     
-    fileprivate lazy var uWideCameraDevice: AVCaptureDevice? = {
+    fileprivate lazy var ultraWideCameraDevice: AVCaptureDevice? = {
         AVCaptureDevice.default(.builtInUltraWideCamera, for: .video, position: .back)
+    }()
+
+    fileprivate lazy var dualCameraDevice: AVCaptureDevice? = {
+        AVCaptureDevice.default(.builtInDualCamera, for: .video, position: .back)
+    }()
+
+    fileprivate lazy var dualWideAngleCameraDevice: AVCaptureDevice? = {
+        AVCaptureDevice.default(.builtInDualWideCamera, for: .video, position: .back)
+    }()
+
+    fileprivate lazy var tripleCameraDevice: AVCaptureDevice? = {
+        AVCaptureDevice.default(.builtInTripleCamera, for: .video, position: .back)
     }()
     
     fileprivate lazy var mic: AVCaptureDevice? = {
@@ -502,12 +548,12 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         stopCaptureSession()
         let oldAnimationValue = animateCameraDeviceChange
         animateCameraDeviceChange = false
-        cameraDevice = .back
+        cameraDevice = .wideAngle
         cameraIsSetup = false
         previewLayer = nil
         captureSession = nil
         frontCameraDevice = nil
-        backCameraDevice = nil
+        wideAngleCameraDevice = nil
         mic = nil
         stillImageOutput = nil
         movieOutput = nil
@@ -882,11 +928,19 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
     open func hasFlash(for cameraDevice: CameraDevice) -> Bool {
         let devices = AVCaptureDevice.videoDevices
         for device in devices {
-            if device.position == .back, cameraDevice == .back {
+            if device.position == .front, cameraDevice == .front {
                 return device.hasFlash
-            } else if device.position == .front, cameraDevice == .front {
+            } else if device.position == .back, cameraDevice == .telephoto {
                 return device.hasFlash
-            } else if device.position == .back, cameraDevice == .uWide {
+            } else if device.position == .back, cameraDevice == .wideAngle {
+                return device.hasFlash
+            } else if device.position == .back, cameraDevice == .ultraWideAngle {
+                return device.hasFlash
+            } else if device.position == .back, cameraDevice == .dual {
+                return device.hasFlash
+            } else if device.position == .back, cameraDevice == .dualWideAngle {
+                return device.hasFlash
+            } else if device.position == .back, cameraDevice == .triple {
                 return device.hasFlash
             }
         }
@@ -980,12 +1034,20 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         let device: AVCaptureDevice?
         
         switch cameraDevice {
-        case .back:
-            device = backCameraDevice
         case .front:
             device = frontCameraDevice
-        case .uWide:
-            device = uWideCameraDevice
+        case .telephoto:
+            device = telephotoCameraDevice
+        case .wideAngle:
+            device = wideAngleCameraDevice
+        case .ultraWideAngle:
+            device = ultraWideCameraDevice
+        case .dual:
+            device = dualCameraDevice
+        case .dualWideAngle:
+            device = dualWideAngleCameraDevice
+        case .triple:
+            device = tripleCameraDevice
         }
         
         do {
@@ -1033,12 +1095,20 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         let device: AVCaptureDevice?
         
         switch cameraDevice {
-        case .back:
-            device = backCameraDevice
         case .front:
             device = frontCameraDevice
-        case .uWide:
-            device = uWideCameraDevice
+        case .telephoto:
+            device = telephotoCameraDevice
+        case .wideAngle:
+            device = wideAngleCameraDevice
+        case .ultraWideAngle:
+            device = ultraWideCameraDevice
+        case .dual:
+            device = dualCameraDevice
+        case .dualWideAngle:
+            device = dualWideAngleCameraDevice
+        case .triple:
+            device = tripleCameraDevice
         }
         
         _changeExposureMode(mode: .continuousAutoExposure)
@@ -1200,12 +1270,20 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         let device: AVCaptureDevice?
         
         switch cameraDevice {
-        case .back:
-            device = backCameraDevice
         case .front:
             device = frontCameraDevice
-        case .uWide:
-            device = uWideCameraDevice
+        case .telephoto:
+            device = telephotoCameraDevice
+        case .wideAngle:
+            device = wideAngleCameraDevice
+        case .ultraWideAngle:
+            device = ultraWideCameraDevice
+        case .dual:
+            device = dualCameraDevice
+        case .dualWideAngle:
+            device = dualWideAngleCameraDevice
+        case .triple:
+            device = tripleCameraDevice
         }
         if device?.exposureMode == mode {
             return
@@ -1229,12 +1307,20 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
             let device: AVCaptureDevice?
             
             switch cameraDevice {
-            case .back:
-                device = backCameraDevice
             case .front:
                 device = frontCameraDevice
-            case .uWide:
-                device = uWideCameraDevice
+            case .telephoto:
+                device = telephotoCameraDevice
+            case .wideAngle:
+                device = wideAngleCameraDevice
+            case .ultraWideAngle:
+                device = ultraWideCameraDevice
+            case .dual:
+                device = dualCameraDevice
+            case .dualWideAngle:
+                device = dualWideAngleCameraDevice
+            case .triple:
+                device = tripleCameraDevice
             }
             
             guard let videoDevice = device else {
@@ -1576,12 +1662,20 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         var maxZoom = CGFloat(1.0)
         beginZoomScale = CGFloat(1.0)
         
-        if cameraDevice == .back, let backCameraDevice = backCameraDevice {
-            maxZoom = backCameraDevice.activeFormat.videoMaxZoomFactor
-        } else if cameraDevice == .front, let frontCameraDevice = frontCameraDevice {
+        if cameraDevice == .front, let frontCameraDevice = frontCameraDevice {
             maxZoom = frontCameraDevice.activeFormat.videoMaxZoomFactor
-        } else if cameraDevice == .uWide, let uWideCameraDevice = uWideCameraDevice {
-            maxZoom = uWideCameraDevice.activeFormat.videoMaxZoomFactor
+        } else if cameraDevice == .telephoto, let telephotoCameraDevice = telephotoCameraDevice {
+            maxZoom = telephotoCameraDevice.activeFormat.videoMaxZoomFactor
+        } else if cameraDevice == .wideAngle, let wideAngleCameraDevice = wideAngleCameraDevice {
+            maxZoom = wideAngleCameraDevice.activeFormat.videoMaxZoomFactor
+        } else if cameraDevice == .ultraWideAngle, let ultraWideAngleCameraDevice = ultraWideCameraDevice {
+            maxZoom = ultraWideAngleCameraDevice.activeFormat.videoMaxZoomFactor
+        } else if cameraDevice == .dual, let dualCameraDevice = dualCameraDevice {
+            maxZoom = dualCameraDevice.activeFormat.videoMaxZoomFactor
+        } else if cameraDevice == .dualWideAngle, let dualWideAngleCameraDevice = dualWideAngleCameraDevice {
+            maxZoom = dualWideAngleCameraDevice.activeFormat.videoMaxZoomFactor
+        } else if cameraDevice == .triple, let tripleCameraDevice = tripleCameraDevice {
+            maxZoom = tripleCameraDevice.activeFormat.videoMaxZoomFactor
         }
         
         maxZoomScale = maxZoom
@@ -1839,21 +1933,46 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
             
             switch cameraDevice {
             case .front:
-                if hasFrontCamera {
-                    if let validFrontDevice = _deviceInputFromDevice(frontCameraDevice),
-                       !inputs.contains(validFrontDevice) {
-                        validCaptureSession.addInput(validFrontDevice)
-                    }
+                guard hasFrontCamera else { return }
+                if let validFrontDevice = _deviceInputFromDevice(frontCameraDevice),
+                   !inputs.contains(validFrontDevice) {
+                    validCaptureSession.addInput(validFrontDevice)
                 }
-            case .back:
-                if let validBackDevice = _deviceInputFromDevice(backCameraDevice),
-                   !inputs.contains(validBackDevice) {
-                    validCaptureSession.addInput(validBackDevice)
+            case .telephoto:
+                guard hasTelephotoCamera else { return }
+                if let validTelephotoDevice = _deviceInputFromDevice(telephotoCameraDevice),
+                   !inputs.contains(validTelephotoDevice) {
+                    validCaptureSession.addInput(validTelephotoDevice)
                 }
-            case .uWide:
-                if let validuWideDevice = _deviceInputFromDevice(uWideCameraDevice),
-                   !inputs.contains(validuWideDevice) {
-                    validCaptureSession.addInput(validuWideDevice)
+            case .wideAngle:
+                guard hasWideAngleCamera else { return }
+                if let validWideAngleDevice = _deviceInputFromDevice(wideAngleCameraDevice),
+                   !inputs.contains(validWideAngleDevice) {
+                    validCaptureSession.addInput(validWideAngleDevice)
+                }
+            case .ultraWideAngle:
+                guard hasUltraWideAngleCamera else { return }
+                if let validUltraWideAngleDevice = _deviceInputFromDevice(ultraWideCameraDevice),
+                   !inputs.contains(validUltraWideAngleDevice) {
+                    validCaptureSession.addInput(validUltraWideAngleDevice)
+                }
+            case .dual:
+                guard hasDualCamera else { return }
+                if let validDualDevice = _deviceInputFromDevice(dualCameraDevice),
+                   !inputs.contains(validDualDevice) {
+                    validCaptureSession.addInput(validDualDevice)
+                }
+            case .dualWideAngle:
+                guard hasDualWideAngleCamera else { return }
+                if let validDualWideAngleDevice = _deviceInputFromDevice(dualWideAngleCameraDevice),
+                   !inputs.contains(validDualWideAngleDevice) {
+                    validCaptureSession.addInput(validDualWideAngleDevice)
+                }
+            case .triple:
+                guard hasTripleCamera else { return }
+                if let validTripleDevice = _deviceInputFromDevice(tripleCameraDevice),
+                   !inputs.contains(validTripleDevice) {
+                    validCaptureSession.addInput(validTripleDevice)
                 }
             }
         }
@@ -1872,7 +1991,7 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
         defer { captureSession?.commitConfiguration() }
         for captureDevice in AVCaptureDevice.videoDevices {
             guard let avTorchMode = AVCaptureDevice.TorchMode(rawValue: flashMode.rawValue) else { continue }
-            if captureDevice.isTorchModeSupported(avTorchMode), cameraDevice == .back {
+            if captureDevice.isTorchModeSupported(avTorchMode), cameraDevice == .wideAngle {
                 do {
                     try captureDevice.lockForConfiguration()
                     
